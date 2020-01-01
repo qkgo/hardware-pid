@@ -388,6 +388,74 @@ BOOL DoIdentifyDeviceSat(HANDLE physicalDriveId, BYTE target, IDENTIFY_DEVICE *d
     return TRUE;
 }
 
+/******************************************************************************
+* Function: get disk's physical number from its drive letter
+*           e.g. C-->0 (C: is on disk0)
+* input: letter, drive letter
+* output: N/A
+* return: Succeed, disk number
+*         Fail, -1
+******************************************************************************/
+DWORD GetPhysicalDriveFromPartitionLetter(CHAR letter)
+{
+    HANDLE hDevice;               // handle to the drive to be examined
+    BOOL result;                 // results flag
+    DWORD readed;                   // discard results
+    STORAGE_DEVICE_NUMBER number;   //use this to get disk numbers
+
+    CHAR path[4096];
+    sprintf(path, "\\\\.\\%c:", letter);
+    hDevice = CreateFile(path, // drive to open
+                         GENERIC_READ | GENERIC_WRITE,    // access to the drive
+                         FILE_SHARE_READ | FILE_SHARE_WRITE,    //share mode
+                         NULL,             // default security attributes
+                         OPEN_EXISTING,    // disposition
+                         0,                // file attributes
+                         NULL);            // do not copy file attribute
+    if (hDevice == INVALID_HANDLE_VALUE) // cannot open the drive
+    {
+        fprintf(stderr, "CreateFile() Error: %ld\n", GetLastError());
+        return DWORD(-1);
+    }
+
+    result = DeviceIoControl(
+            hDevice,                // handle to device
+            IOCTL_STORAGE_GET_DEVICE_NUMBER, // dwIoControlCode
+            NULL,                            // lpInBuffer
+            0,                               // nInBufferSize
+            &number,           // output buffer
+            sizeof(number),         // size of output buffer
+            &readed,       // number of bytes returned
+            NULL      // OVERLAPPED structure
+    );
+    if (!result) // fail
+    {
+        fprintf(stderr, "IOCTL_STORAGE_GET_DEVICE_NUMBER Error: %ld\n", GetLastError());
+        (void)CloseHandle(hDevice);
+        return (DWORD)-1;
+    }
+    //printf("%d %d %d\n\n", number.DeviceType, number.DeviceNumber, number.PartitionNumber);
+
+    (void)CloseHandle(hDevice);
+    return number.DeviceNumber;
+}
+
+/*DWORD GetSystemDiskPhysicalNumber(void)
+{
+    CHAR sysPath[DISK_PATH_LEN];
+    CHAR diskLetter;
+    DWORD diskNumber;
+
+    DWORD ret = GetSystemDirectory(sysPath, sizeof(sysPath));
+    if (ret == 0)
+    {
+        fprintf(stderr, "GetSystemDirectory() Error: %ld\n", GetLastError());
+        return (DWORD)-1;
+    }
+    diskLetter = sysPath[0];
+    diskNumber = GetPhysicalDriveFromPartitionLetter(diskLetter);
+    return diskNumber;
+}*/
 
 int main(int argc, char *argv[]) {
     HANDLE hDevice = NULL;
@@ -400,19 +468,34 @@ int main(int argc, char *argv[]) {
     int dwLen = 4096;
     DWORD dwRet;
     BOOL bRet;
-    char baseDeviceName[100];
+    char diskLetter[1];
+    char deviceNumber[1];
+    char deviceName[19] = "\\\\.\\PhysicalDrive3";
     // 空判
     if (argv[1] == NULL) {
         return -1;
     };
     // copy 到变量
-    strcpy(baseDeviceName, argv[1]);
-    if (baseDeviceName == NULL) {
+    strcpy(diskLetter, argv[1]);
+    DWORD diskNumber  ;
+    diskNumber = GetPhysicalDriveFromPartitionLetter(diskLetter[0]);
+    if (diskNumber == NULL && diskNumber!=0) {
+        printf("Number Not Found");
         return -1;
     };
-    char deviceName[100] = "\\\\.\\PhysicalDrive";
+    deviceNumber[0] =  CHAR(UINT(diskNumber+48));
+    printf(deviceNumber);
+//    deviceNumber[0] = LOBYTE(diskNumber);
     // 连接string
-    strcat(deviceName, baseDeviceName);
+    deviceName[17]= CHAR(UINT(diskNumber+48));//  deviceNumber[0];
+//    deviceName[17]= CHAR(diskNumber);//  deviceNumber[0];
+    printf( diskLetter);
+    printf("\r\n");
+    printf( deviceNumber);
+    printf("\r\n");
+    printf(deviceName);
+    printf("\r\n");
+//    hDevice = CreateFileA(deviceName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
     hDevice = CreateFileA(deviceName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                           OPEN_EXISTING, 0, NULL);
     // 如果没有管理员权限会抱错 2020.1
