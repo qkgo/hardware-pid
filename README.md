@@ -2,6 +2,12 @@ PhysicalDrive
 
 
 
+# 2020.1 
+更新支持传入参数
+```shell script
+cmake-build-debug/cdevice.exe 1/2/3/4/5/6/7/8/9/10
+配合wmic diskdrive使用
+```
 
 
 # TODO的文档:windows获取逻辑区号的物理分区

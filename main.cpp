@@ -426,8 +426,21 @@ int main(int argc, char *argv[]) {
 	int dwLen = 4096;
 	DWORD	dwRet;
 	BOOL	bRet;
-
-	hDevice=CreateFileA("\\\\.\\PhysicalDrive6",GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0,NULL);
+    char baseDeviceName[100];
+    // 空判
+    if (argv[1]  == NULL){
+        return -1;
+    };
+    // copy 到变量
+    strcpy(baseDeviceName, argv[1]);
+    if (baseDeviceName == NULL){
+        return -1;
+    };
+    char deviceName[100] = "\\\\.\\PhysicalDrive";
+    // 连接string
+    strcat(deviceName, baseDeviceName);
+	hDevice=CreateFileA(deviceName ,GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0,NULL);
+	// 如果没有管理员权限会抱错 2020.1
 	if(hDevice==INVALID_HANDLE_VALUE)
 	{
 	    printf("NEED SUPER ADMIN");
